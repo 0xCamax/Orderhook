@@ -140,7 +140,7 @@ contract Orderhook is BaseHook {
     }
 
     /**
-     * Close finalized orders 
+     * Close finalized orders
      *         Is finialized if:
      *             -Is 100% covered
      */

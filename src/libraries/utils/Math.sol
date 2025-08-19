@@ -77,6 +77,4 @@ library Math {
     function fromFixedPoint(int256 value) public pure returns (int256) {
         return value / int256(PRECISION);
     }
-
-    
 }

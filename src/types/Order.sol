@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-
 /// @notice Order empaquetado en un bytes32 con este layout (LSB -> MSB):
 /// [ maker: 160 bits (0..159) ]
 /// [ tokenId: 80 bits (160..239) ]
@@ -11,12 +10,7 @@ type Order is bytes32;
 
 using OrderLibrary for Order global;
 
-function toOrder(
-    address maker,
-    uint256 tokenId,
-    uint8 leverage,
-    bool zeroForOne
-) pure returns (Order result) {
+function toOrder(address maker, uint256 tokenId, uint8 leverage, bool zeroForOne) pure returns (Order result) {
     assembly {
         // Colocar maker (bits 0..159)
         result := and(maker, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
@@ -60,5 +54,4 @@ library OrderLibrary {
             result := and(shr(248, order), 0xFF)
         }
     }
-
 }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import '@uniswap/v4-core/libraries/FullMath.sol';
-import '@uniswap/v4-core/libraries/FixedPoint96.sol';
+import "@uniswap/v4-core/libraries/FullMath.sol";
+import "@uniswap/v4-core/libraries/FixedPoint96.sol";
 
 /// @title Liquidity amount functions
 /// @notice Provides functions for computing liquidity amounts from token amounts and prices
@@ -19,19 +19,16 @@ library LiquidityAmounts {
     /// @param sqrtRatioBX96 A sqrt price representing the second tick boundary
     /// @param liquidity The liquidity being valued
     /// @return amount0 The amount of token0
-    function getAmount0ForLiquidity(
-        uint160 sqrtRatioAX96,
-        uint160 sqrtRatioBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount0) {
+    function getAmount0ForLiquidity(uint160 sqrtRatioAX96, uint160 sqrtRatioBX96, uint128 liquidity)
+        internal
+        pure
+        returns (uint256 amount0)
+    {
         if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
-        return
-            FullMath.mulDiv(
-                uint256(liquidity) << FixedPoint96.RESOLUTION,
-                sqrtRatioBX96 - sqrtRatioAX96,
-                sqrtRatioBX96
-            ) / sqrtRatioAX96;
+        return FullMath.mulDiv(
+            uint256(liquidity) << FixedPoint96.RESOLUTION, sqrtRatioBX96 - sqrtRatioAX96, sqrtRatioBX96
+        ) / sqrtRatioAX96;
     }
 
     /// @notice Computes the amount of token1 for a given amount of liquidity and a price range
@@ -39,11 +36,11 @@ library LiquidityAmounts {
     /// @param sqrtRatioBX96 A sqrt price representing the second tick boundary
     /// @param liquidity The liquidity being valued
     /// @return amount1 The amount of token1
-    function getAmount1ForLiquidity(
-        uint160 sqrtRatioAX96,
-        uint160 sqrtRatioBX96,
-        uint128 liquidity
-    ) internal pure returns (uint256 amount1) {
+    function getAmount1ForLiquidity(uint160 sqrtRatioAX96, uint160 sqrtRatioBX96, uint128 liquidity)
+        internal
+        pure
+        returns (uint256 amount1)
+    {
         if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
         return FullMath.mulDiv(liquidity, sqrtRatioBX96 - sqrtRatioAX96, FixedPoint96.Q96);

@@ -22,13 +22,11 @@ import {LiquidityAmounts} from "./libraries/LiquidityAmounts.sol";
 import {LiquidityAmounts as v4Liq} from "@uniswap/v4-periphery/libraries/LiquidityAmounts.sol";
 
 /**
-This hook should be capable of:
-- Handling orderbook orders.
-- Creating and settling option contracts.
-- Creating, closing and liquidating perpetual positions.
-
+ * This hook should be capable of:
+ * - Handling orderbook orders.
+ * - Creating and settling option contracts.
+ * - Creating, closing and liquidating perpetual positions.
  */
-
 contract Orderhook is BaseHook {
     using StateLibrary for IPoolManager;
     using TransientStateLibrary for IPoolManager;
@@ -43,67 +41,49 @@ contract Orderhook is BaseHook {
 
     bool internal initialized;
 
-    constructor(
-        IPoolManager _manager,
-        address _positionManger,
-        address _liquidityManager
-    ) BaseHook(_manager) {
+    constructor(IPoolManager _manager, address _positionManger, address _liquidityManager) BaseHook(_manager) {
         positionManager = IPositionManager(_positionManger);
         liquidityManager = LiquidityManager(_liquidityManager);
     }
 
-    function _beforeInitialize(
-        address,
-        PoolKey calldata key,
-        uint160
-    ) internal pure override returns (bytes4) {
+    function _beforeInitialize(address, PoolKey calldata key, uint160) internal pure override returns (bytes4) {
         require(key.tickSpacing == 1, "Tick spacing must be one");
         return (this.beforeInitialize.selector);
     }
 
-    function _beforeSwap(
-        address,
-        PoolKey calldata key,
-        SwapParams calldata params,
-        bytes calldata
-    ) internal override returns (bytes4, BeforeSwapDelta, uint24 fee) {
-        (, int24 currentTick, , ) = poolManager.getSlot0(key.toId());
+    function _beforeSwap(address, PoolKey calldata key, SwapParams calldata params, bytes calldata)
+        internal
+        override
+        returns (bytes4, BeforeSwapDelta, uint24 fee)
+    {
+        (, int24 currentTick,,) = poolManager.getSlot0(key.toId());
         assembly {
             tstore(0x00, currentTick)
         }
         //handle dynamic fee
 
-        return (
-            this.beforeSwap.selector,
-            BeforeSwapDelta.wrap(params.amountSpecified),
-            fee
-        );
+        return (this.beforeSwap.selector, BeforeSwapDelta.wrap(params.amountSpecified), fee);
     }
 
     /// @inheritdoc BaseHook
-    function _afterSwap(
-        address,
-        PoolKey calldata key,
-        SwapParams calldata params,
-        BalanceDelta,
-        bytes calldata
-    ) internal override returns (bytes4, int128) {
+    function _afterSwap(address, PoolKey calldata key, SwapParams calldata params, BalanceDelta, bytes calldata)
+        internal
+        override
+        returns (bytes4, int128)
+    {
         _resolveActiveOrders(key, params.zeroForOne);
         return (this.afterSwap.selector, 0);
     }
 
     // @inheritdoc BaseHook
-    function _beforeAddLiquidity(
-        address,
-        PoolKey calldata,
-        ModifyLiquidityParams calldata params,
-        bytes calldata
-    ) internal view override returns (bytes4) {
+    function _beforeAddLiquidity(address, PoolKey calldata, ModifyLiquidityParams calldata params, bytes calldata)
+        internal
+        view
+        override
+        returns (bytes4)
+    {
         require(params.tickUpper - params.tickLower == 1, "Invalid position");
-        require(
-            positionManager.ownerOf(uint256(params.salt)) == address(this),
-            "Invalid position owner"
-        );
+        require(positionManager.ownerOf(uint256(params.salt)) == address(this), "Invalid position owner");
 
         return this.beforeAddLiquidity.selector;
     }
@@ -119,9 +99,7 @@ contract Orderhook is BaseHook {
     ) internal override returns (bytes4, BalanceDelta) {
         OrderRequest memory orderReq = abi.decode(hookData, (OrderRequest));
         Order order = orderReq.makeOrder(uint256(params.salt));
-        int24 targetTick = orderReq.zeroForOne
-            ? params.tickUpper
-            : params.tickLower;
+        int24 targetTick = orderReq.zeroForOne ? params.tickUpper : params.tickLower;
         activeOrders[targetTick][orderReq.zeroForOne].push(order);
 
         //settle happens in positionManager
@@ -139,62 +117,35 @@ contract Orderhook is BaseHook {
     ) internal override onlyPoolManager returns (bytes4, BalanceDelta) {
         Order order = abi.decode(hookData, (Order));
         if (order.zeroForOne()) {
-            poolManager.take(
-                key.currency1,
-                order.maker(),
-                uint128(delta.amount1())
-            );
+            poolManager.take(key.currency1, order.maker(), uint128(delta.amount1()));
             if (feesAccrued.amount1() > 0) {
-                poolManager.take(
-                    key.currency1,
-                    address(this),
-                    uint128(feesAccrued.amount1())
-                );
+                poolManager.take(key.currency1, address(this), uint128(feesAccrued.amount1()));
                 liquidityManager.deposit(uint128(feesAccrued.amount1()));
             }
             if (feesAccrued.amount0() > 0) {
-                poolManager.take(
-                    key.currency1,
-                    address(liquidityManager),
-                    uint128(feesAccrued.amount0())
-                );
+                poolManager.take(key.currency1, address(liquidityManager), uint128(feesAccrued.amount0()));
             }
         } else {
-            poolManager.take(
-                key.currency1,
-                order.maker(),
-                uint128(delta.amount0())
-            );
+            poolManager.take(key.currency1, order.maker(), uint128(delta.amount0()));
             if (feesAccrued.amount0() > 0) {
-                poolManager.take(
-                    key.currency1,
-                    address(this),
-                    uint128(feesAccrued.amount0())
-                );
+                poolManager.take(key.currency1, address(this), uint128(feesAccrued.amount0()));
                 liquidityManager.deposit(uint128(feesAccrued.amount0()));
             }
             if (feesAccrued.amount1() > 0) {
-                poolManager.take(
-                    key.currency1,
-                    address(liquidityManager),
-                    uint128(feesAccrued.amount1())
-                );
+                poolManager.take(key.currency1, address(liquidityManager), uint128(feesAccrued.amount1()));
             }
         }
 
         return (this.afterRemoveLiquidity.selector, delta);
     }
 
-    /** 
-        Close finalized orders 
-            Is finialized if:
-                -Is 100% covered
-    */
-    function _resolveActiveOrders(
-        PoolKey memory key,
-        bool zeroForOne
-    ) internal {
-        (, int24 currentTick, , ) = poolManager.getSlot0(key.toId());
+    /**
+     * Close finalized orders 
+     *         Is finialized if:
+     *             -Is 100% covered
+     */
+    function _resolveActiveOrders(PoolKey memory key, bool zeroForOne) internal {
+        (, int24 currentTick,,) = poolManager.getSlot0(key.toId());
         int24 initialTick;
         assembly {
             initialTick := tload(0x00)
@@ -202,9 +153,7 @@ contract Orderhook is BaseHook {
 
         if (currentTick == initialTick) return; // No movement, no orders to resolve
 
-        (int24 start, int24 end) = zeroForOne
-            ? (currentTick + 1, initialTick + 1)
-            : (initialTick, currentTick);
+        (int24 start, int24 end) = zeroForOne ? (currentTick + 1, initialTick + 1) : (initialTick, currentTick);
 
         bytes memory actions;
         bytes[] memory params;
@@ -224,11 +173,11 @@ contract Orderhook is BaseHook {
         positionManager.modifyLiquiditiesWithoutUnlock(actions, params);
     }
 
-    function _burnPosition(
-        Order order,
-        bytes memory actions,
-        bytes[] memory params
-    ) internal view returns (bytes memory, bytes[] memory) {
+    function _burnPosition(Order order, bytes memory actions, bytes[] memory params)
+        internal
+        view
+        returns (bytes memory, bytes[] memory)
+    {
         bytes[] memory _params = new bytes[](params.length + 1);
         for (uint256 i = 0; i < params.length; i++) {
             _params[i] = params[i];
@@ -241,27 +190,18 @@ contract Orderhook is BaseHook {
             abi.encode(order)
         );
 
-        return (
-            abi.encodePacked(actions, uint8(Actions.BURN_POSITION)),
-            _params
-        );
+        return (abi.encodePacked(actions, uint8(Actions.BURN_POSITION)), _params);
     }
 
-
     //WIP
-    function _borrowLeverage(
-        Order order,
-        ModifyLiquidityParams memory params,
-        int24 currentTick
-    ) internal {
+    function _borrowLeverage(Order order, ModifyLiquidityParams memory params, int24 currentTick) internal {
         require(order.leverage() > 1, "Invalid leverage");
-        (uint256 amount0, uint256 amount1) = LiquidityAmounts
-            .getAmountsForLiquidity(
-                currentTick.getSqrtPriceAtTick(),
-                params.tickLower.getSqrtPriceAtTick(),
-                params.tickUpper.getSqrtPriceAtTick(),
-                uint128(uint256(params.liquidityDelta))
-            );
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            currentTick.getSqrtPriceAtTick(),
+            params.tickLower.getSqrtPriceAtTick(),
+            params.tickUpper.getSqrtPriceAtTick(),
+            uint128(uint256(params.liquidityDelta))
+        );
 
         uint256 amount = (amount0 != 0) ? amount0 : amount1;
         amount = (amount * (order.leverage() - 1)) / order.leverage();

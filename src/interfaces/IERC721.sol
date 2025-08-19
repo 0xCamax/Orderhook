@@ -45,10 +45,7 @@ interface IERC721 {
 
 /// @notice Interface for contracts that accept ERC721 tokens.
 interface IERC721TokenReceiver {
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 id,
-        bytes calldata data
-    ) external returns (bytes4);
+    function onERC721Received(address operator, address from, uint256 id, bytes calldata data)
+        external
+        returns (bytes4);
 }

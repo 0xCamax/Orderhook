@@ -7,9 +7,7 @@ import {PoolKey} from "@uniswap/v4-core/types/PoolKey.sol";
 library DecodeCalldataTest {
     using CalldataDecoder for bytes;
 
-    function decodeMintParams(
-        bytes calldata data
-    )
+    function decodeMintParams(bytes calldata data)
         public
         pure
         returns (
@@ -26,7 +24,7 @@ library DecodeCalldataTest {
         return data.decodeMintParams();
     }
 
-    function unlockCalldata(bytes calldata data) public pure returns (bytes memory actions, bytes[] memory params){
+    function unlockCalldata(bytes calldata data) public pure returns (bytes memory actions, bytes[] memory params) {
         (actions, params) = data.decodeActionsRouterParams();
     }
 }

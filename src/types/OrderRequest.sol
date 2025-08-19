@@ -17,10 +17,7 @@ library OrderRequestLib {
         require(req.leverage <= 20, "Invalid leverage");
     }
 
-    function makeOrder(
-        OrderRequest memory req,
-        uint256 id
-    ) internal pure returns (Order) {
+    function makeOrder(OrderRequest memory req, uint256 id) internal pure returns (Order) {
         req.isValid();
         return toOrder(req.maker, id, req.leverage, req.zeroForOne);
     }

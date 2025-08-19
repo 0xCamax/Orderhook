@@ -43,10 +43,7 @@ contract LiquidityManager is ERC20 {
         _;
     }
 
-    constructor(
-        address _asset,
-        address _manager
-    ) ERC20("Interest-Bearing LP Share", "IBLP") {
+    constructor(address _asset, address _manager) ERC20("Interest-Bearing LP Share", "IBLP") {
         require(_asset != address(0), "Invalid asset");
 
         asset = IERC20(_asset);
@@ -68,9 +65,7 @@ contract LiquidityManager is ERC20 {
 
         asset.safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 shares = (supply == 0 || pool == 0)
-            ? amount
-            : (amount * supply) / pool;
+        uint256 shares = (supply == 0 || pool == 0) ? amount : (amount * supply) / pool;
 
         totalAssets.supplied += amount;
         _mint(msg.sender, shares);
@@ -94,10 +89,7 @@ contract LiquidityManager is ERC20 {
     // -----------------------------
     function borrow(uint256 amount, address borrower) external onlyManager {
         require(amount > 0, "Zero amount");
-        require(
-            amount <= asset.balanceOf(address(this)),
-            "Insufficient liquidity"
-        );
+        require(amount <= asset.balanceOf(address(this)), "Insufficient liquidity");
 
         _updateBorrowIndex();
 
@@ -105,10 +97,7 @@ contract LiquidityManager is ERC20 {
 
         if (loan.principal > 0) {
             // Settle existing loan first by calculating accrued interest
-            uint256 accruedInterest = _calculateAccruedInterest(
-                loan.principal,
-                loan.borrowIndex
-            );
+            uint256 accruedInterest = _calculateAccruedInterest(loan.principal, loan.borrowIndex);
 
             // Add accrued interest to the pool
             totalAssets.supplied += accruedInterest;
@@ -118,11 +107,7 @@ contract LiquidityManager is ERC20 {
             loan.borrowIndex = borrowIndex;
         } else {
             // New loan
-            loans[borrower] = Loan({
-                principal: amount,
-                borrowIndex: borrowIndex,
-                repaid: Repaid(0, 0)
-            });
+            loans[borrower] = Loan({principal: amount, borrowIndex: borrowIndex, repaid: Repaid(0, 0)});
         }
 
         totalAssets.borrowed += amount;
@@ -139,14 +124,8 @@ contract LiquidityManager is ERC20 {
         Loan storage loan = loans[loanId];
 
         // Calculate total debt (principal + accrued interest)
-        uint256 accruedInterest = _calculateAccruedInterest(
-            loan.principal,
-            loan.borrowIndex
-        );
-        uint256 totalDebt = loan.principal +
-            accruedInterest -
-            loan.repaid.principal -
-            loan.repaid.interest;
+        uint256 accruedInterest = _calculateAccruedInterest(loan.principal, loan.borrowIndex);
+        uint256 totalDebt = loan.principal + accruedInterest - loan.repaid.principal - loan.repaid.interest;
 
         require(amount <= totalDebt, "Repay amount exceeds debt");
 
@@ -159,9 +138,7 @@ contract LiquidityManager is ERC20 {
         // Pay interest first
         uint256 _interestOwed = accruedInterest - loan.repaid.interest;
         if (remainingAmount > 0 && _interestOwed > 0) {
-            interestPayment = remainingAmount > _interestOwed
-                ? _interestOwed
-                : remainingAmount;
+            interestPayment = remainingAmount > _interestOwed ? _interestOwed : remainingAmount;
             remainingAmount -= interestPayment;
             totalAssets.supplied += interestPayment; // Interest goes to pool
         }
@@ -176,15 +153,8 @@ contract LiquidityManager is ERC20 {
         loan.repaid.principal += principalPayment;
 
         // Update loan principal and index if there's still debt
-        if (
-            loan.principal + accruedInterest >
-            loan.repaid.principal + loan.repaid.interest
-        ) {
-            loan.principal =
-                loan.principal +
-                accruedInterest -
-                loan.repaid.principal -
-                loan.repaid.interest;
+        if (loan.principal + accruedInterest > loan.repaid.principal + loan.repaid.interest) {
+            loan.principal = loan.principal + accruedInterest - loan.repaid.principal - loan.repaid.interest;
             loan.borrowIndex = borrowIndex;
             loan.repaid = Repaid(0, 0); // Reset repaid amounts since we normalized the principal
         }
@@ -219,8 +189,7 @@ contract LiquidityManager is ERC20 {
                 borrowIndex = (borrowIndex * interestFactor) / 1e18;
 
                 // Calculate total interest accrued
-                uint256 totalInterest = (totalAssets.borrowed *
-                    (interestFactor - 1e18)) / 1e18;
+                uint256 totalInterest = (totalAssets.borrowed * (interestFactor - 1e18)) / 1e18;
                 emit InterestAccrued(totalInterest);
             }
         }
@@ -228,10 +197,7 @@ contract LiquidityManager is ERC20 {
         lastUpdateTime = block.timestamp;
     }
 
-    function _calculateAccruedInterest(
-        uint256 principal,
-        uint256 loanBorrowIndex
-    ) internal view returns (uint256) {
+    function _calculateAccruedInterest(uint256 principal, uint256 loanBorrowIndex) internal view returns (uint256) {
         if (loanBorrowIndex == 0) return 0;
 
         // Calculate current index
@@ -244,8 +210,7 @@ contract LiquidityManager is ERC20 {
             if (util > 0) {
                 int256 _rate = rate.getPerSecondRate(int256(util));
                 if (_rate > 0) {
-                    uint256 interestFactor = 1e18 +
-                        (uint256(_rate) * timeElapsed);
+                    uint256 interestFactor = 1e18 + (uint256(_rate) * timeElapsed);
                     currentIndex = (borrowIndex * interestFactor) / 1e18;
                 }
             }
@@ -253,9 +218,7 @@ contract LiquidityManager is ERC20 {
 
         // Interest = principal * (currentIndex - loanIndex) / loanIndex
         if (currentIndex > loanBorrowIndex) {
-            return
-                (principal * (currentIndex - loanBorrowIndex)) /
-                loanBorrowIndex;
+            return (principal * (currentIndex - loanBorrowIndex)) / loanBorrowIndex;
         }
 
         return 0;
@@ -268,14 +231,8 @@ contract LiquidityManager is ERC20 {
         Loan memory loan = loans[loanId];
         require(loan.principal != 0, "Invalid loan");
 
-        uint256 accruedInterest = _calculateAccruedInterest(
-            loan.principal,
-            loan.borrowIndex
-        );
-        return
-            accruedInterest > loan.repaid.interest
-                ? accruedInterest - loan.repaid.interest
-                : 0;
+        uint256 accruedInterest = _calculateAccruedInterest(loan.principal, loan.borrowIndex);
+        return accruedInterest > loan.repaid.interest ? accruedInterest - loan.repaid.interest : 0;
     }
 
     function utilization() public view returns (uint256) {
@@ -294,10 +251,7 @@ contract LiquidityManager is ERC20 {
         Loan memory loan = loans[loanId];
         if (loan.principal == 0) return 0;
 
-        uint256 accruedInterest = _calculateAccruedInterest(
-            loan.principal,
-            loan.borrowIndex
-        );
+        uint256 accruedInterest = _calculateAccruedInterest(loan.principal, loan.borrowIndex);
         uint256 totalOwed = loan.principal + accruedInterest;
         uint256 totalRepaid = loan.repaid.principal + loan.repaid.interest;
 

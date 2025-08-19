@@ -11,15 +11,9 @@ using {add as +, sub as -, eq as ==, neq as !=} for PoolState global;
 using PoolStateLibrary for PoolState global;
 using SafeCast for int256;
 
-function toPoolState(
-    int128 _borrowed,
-    int128 _supplied
-) pure returns (PoolState _poolState) {
+function toPoolState(int128 _borrowed, int128 _supplied) pure returns (PoolState _poolState) {
     assembly ("memory-safe") {
-        _poolState := or(
-            shl(128, _borrowed),
-            and(sub(shl(128, 1), 1), _supplied)
-        )
+        _poolState := or(shl(128, _borrowed), and(sub(shl(128, 1), 1), _supplied))
     }
 }
 
@@ -77,27 +71,19 @@ library PoolStateLibrary {
     }
 
     function utilization(PoolState s) internal pure returns (int256) {
-        if(s.supplied() == 0){
+        if (s.supplied() == 0) {
             return 0;
         }
         return (s.borrowed() * 1e18) / s.supplied();
     }
 
-    function addBorrow(
-        PoolState s,
-        int128 delta
-    ) internal pure returns (PoolState) {
+    function addBorrow(PoolState s, int128 delta) internal pure returns (PoolState) {
         s = toPoolState(s.borrowed() + delta, s.supplied());
         return s;
     }
 
-    function addSupply(
-        PoolState s,
-        int128 delta
-    ) internal pure returns (PoolState) {
+    function addSupply(PoolState s, int128 delta) internal pure returns (PoolState) {
         s = toPoolState(s.borrowed(), s.supplied() + delta);
         return s;
     }
-
-    
 }

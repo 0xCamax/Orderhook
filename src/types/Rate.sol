@@ -20,10 +20,7 @@ library RateLibrary {
      * Input utilization should be in fixed point format (multiplied by PRECISION)
      * Returns result * PRECISION
      */
-    function borrowRate(
-        Rate storage config,
-        int256 utilization
-    ) internal view returns (int256) {
+    function borrowRate(Rate storage config, int256 utilization) internal view returns (int256) {
         int256 base = config.baseRate * 1e16;
         // Calculate utilization + 1
         int256 term1_input = utilization + int256(Math.PRECISION);
@@ -54,10 +51,7 @@ library RateLibrary {
      * For compound interest: perSecondRate = (1 + annualRate)^(1/SECONDS_PER_YEAR) - 1
      * This implementation uses simple interest per second for gas efficiency
      */
-    function getPerSecondRate(
-        Rate storage config,
-        int256 utilization
-    ) internal view returns (int256) {
+    function getPerSecondRate(Rate storage config, int256 utilization) internal view returns (int256) {
         int256 annualRate = borrowRate(config, utilization);
         return annualRate / int256(SECONDS_PER_YEAR);
     }

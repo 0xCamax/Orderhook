@@ -1,5 +1,5 @@
 {
     "tasks": {
-        "mine": "deno run --allow-env --allow-net --allow-read ./lib/hookminerScript/main.ts"
+        "mine": "deno run --allow-env --allow-net --allow-read ./mine.ts"
     }
 }

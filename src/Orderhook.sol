@@ -19,13 +19,15 @@ import {Actions} from "@uniswap/v4-periphery/libraries/Actions.sol";
 import {OrderRequest, Order, toOrder} from "./types/index.sol";
 import {LiquidityManager} from "./LiquidityManager.sol";
 import {LiquidityAmounts} from "./libraries/LiquidityAmounts.sol";
-import {LiquidityAmounts as v4Liq} from "@uniswap/v4-periphery/libraries/LiquidityAmounts.sol";
 
 /**
  * This hook should be capable of:
  * - Handling orderbook orders.
  * - Creating and settling option contracts.
  * - Creating, closing and liquidating perpetual positions.
+ * - JIT
+ * - Dynamic Fees
+ * - Granular liquidity
  */
 contract Orderhook is BaseHook {
     using StateLibrary for IPoolManager;
@@ -38,8 +40,6 @@ contract Orderhook is BaseHook {
 
     IPositionManager public immutable positionManager;
     LiquidityManager public immutable liquidityManager;
-
-    bool internal initialized;
 
     constructor(IPoolManager _manager, address _positionManger, address _liquidityManager) BaseHook(_manager) {
         positionManager = IPositionManager(_positionManger);
